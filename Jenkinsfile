@@ -1,51 +1,44 @@
 pipeline {
-    agent any
-
-    stages {
-        stage('deploy to laravel') {
-            steps {
-                sshPublisher(publishers: [sshPublisherDesc(configName: 'angular-v1', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '/var/www/html/backend_extra/', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
-            }
-        }
+  agent any
+  options {
+    buildDiscarder(logRotator(numToKeepStr: '5'))
+  }
+  environment {
+    HEROKU_API_KEY = credentials('97020040-3eb8-4464-b590-165fd0dca31a')
+    IMAGE_NAME = 'piyush792/jenkins-example-laravel'
+    IMAGE_TAG = 'latest'
+    APP_NAME = 'jenkins-example-laravel'
+  }
+  stages {
+    stage('Build') {
+      steps {
+        sh 'docker build -t $IMAGE_NAME:$IMAGE_TAG .'
+      }
     }
+    stage('Login') {
+      steps {
+        sh 'echo $HEROKU_API_KEY | docker login --username=_ --password-stdin registry.heroku.com'
+      }
+    }
+    stage('Push to Heroku registry') {
+      steps {
+        sh '''
+          docker tag $IMAGE_NAME:$IMAGE_TAG registry.heroku.com/$APP_NAME/web
+          docker push registry.heroku.com/$APP_NAME/web
+        '''
+      }
+    }
+    stage('Release the image') {
+      steps {
+        sh '''
+          heroku container:release web --app=$APP_NAME
+        '''
+      }
+    }
+  }
+  post {
+    always {
+      sh 'docker logout'
+    }
+  }
 }
-
-
-// pipeline {
-//     agent any
-
-//     stages {
-//         stage('deploy') {
-//             steps {
-//                 sshPublisher(publishers: [sshPublisherDesc(configName: 'server-demo', transfers: [sshTransfer(cleanRemote: false, excludes: '', execCommand: '', execTimeout: 120000, flatten: false, makeEmptyDirs: false, noDefaultExcludes: false, patternSeparator: '[, ]+', remoteDirectory: '/var/www/html/backend2/', remoteDirectorySDF: false, removePrefix: '', sourceFiles: '**/*')], usePromotionTimestamp: false, useWorkspaceInPromotion: false, verbose: false)])
-//             }
-//         }
-//     }
-// }
-// comeent this file
-//piyush
-//again
-//today 15/01/2023
-
-
-// pipeline{
-//     agent any
-//     environment{
-//         staging_server="3.109.155.241"
-//     }
-//     stages{
-//         stage('Deploy to Remote'){
-//             // agent {label 'slave_api'}
-//             steps{
-//                 // sh '''
-//                 //     for fileName in `find ${WORKSPACE} -type f -mmin -10 | grep -v ".git" | grep -v "Jenkinsfile"`
-//                 //     do
-//                 //         fil=$(echo ${fileName} | sed 's/'"${JOB_NAME}"'/ /' | awk {'print $2'})
-//                 //         scp -r ${WORKSPACE}${fil} root@${staging_server}:/var/www/html/backend_api${fil}
-//                 //     done
-//                 // '''
-//                 sh 'scp -r ${WORKSPACE}/* root@${staging_server}:/var/www/html/backend2/'
-//             }
-//         }
-//     }
-// }
