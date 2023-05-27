@@ -12,7 +12,7 @@ pipeline {
         }
         stage("Verify SSH connection to server") {
             steps {
-                sshagent(credentials: ['ssh-key']) {
+                sshagent(credentials: ['ec2-user']) {
                     sh '''
                         ssh -o StrictHostKeyChecking=no ec2-user@13.233.95.66 whoami
                     '''
